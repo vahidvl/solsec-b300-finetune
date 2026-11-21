@@ -111,6 +111,7 @@ def main() -> None:
     parser.add_argument("--llama-cpp-dir", type=Path, default=Path.home() / "llama.cpp")
     parser.add_argument("--eval-limit", type=int, default=25)
     parser.add_argument("--skip-base-eval", action="store_true")
+    parser.add_argument("--model-prefix", type=str, default="solsec-qwen3.8-27b")
     args = parser.parse_args()
 
     tokenizer = AutoTokenizer.from_pretrained(args.base_model, trust_remote_code=True)
@@ -126,7 +127,7 @@ def main() -> None:
     print(f"Saved merged safetensors -> {args.merged_dir}")
 
     args.gguf_dir.mkdir(parents=True, exist_ok=True)
-    bf16_gguf = args.gguf_dir / "solsec-qwen3.8-27b-bf16.gguf"
+    bf16_gguf = args.gguf_dir / f"{args.model_prefix}-bf16.gguf"
     convert_script = args.llama_cpp_dir / "convert_hf_to_gguf.py"
     quantize_bin = args.llama_cpp_dir / "build" / "bin" / "llama-quantize"
 
@@ -135,7 +136,7 @@ def main() -> None:
         check=True,
     )
     for quant in ("Q4_K_M", "Q8_0"):
-        out_gguf = args.gguf_dir / f"solsec-qwen3.8-27b-{quant}.gguf"
+        out_gguf = args.gguf_dir / f"{args.model_prefix}-{quant}.gguf"
         subprocess.run([str(quantize_bin), str(bf16_gguf), str(out_gguf), quant], check=True)
         print(f"Exported GGUF -> {out_gguf}")
 
@@ -157,7 +158,7 @@ def main() -> None:
         fresh_base = load_model_dynamic(args.base_model)
         report["base"] = evaluate_model(fresh_base, tokenizer, eval_records)
 
-    report_path = args.gguf_dir / "eval_report.json"
+    report_path = args.gguf_dir / f"{args.model_prefix}_eval_report.json"
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(f"Saved eval report -> {report_path}")
     print(json.dumps(report, indent=2))
