@@ -32,7 +32,11 @@ def upload_model_repo(
     lora_dir: Path | None = None,
 ) -> None:
     api.create_repo(repo_id=repo_id, repo_type="model", private=True, exist_ok=True)
+    existing = set(api.list_repo_files(repo_id=repo_id, repo_type="model"))
     for local_path, path_in_repo in files:
+        if path_in_repo in existing:
+            print(f"[SKIP] Already in {repo_id}: {path_in_repo}")
+            continue
         if not local_path.exists():
             print(f"[WARN] Missing file, skipping: {local_path}")
             continue
@@ -44,13 +48,16 @@ def upload_model_repo(
             repo_type="model",
         )
     if lora_dir and lora_dir.exists() and lora_dir.is_dir():
-        print(f"Uploading LoRA adapter {lora_dir} -> {repo_id}/lora-adapter ...")
-        api.upload_folder(
-            folder_path=str(lora_dir),
-            path_in_repo="lora-adapter",
-            repo_id=repo_id,
-            repo_type="model",
-        )
+        if any(f.startswith("lora-adapter/") for f in existing):
+            print(f"[SKIP] lora-adapter/ already in {repo_id}")
+        else:
+            print(f"Uploading LoRA adapter {lora_dir} -> {repo_id}/lora-adapter ...")
+            api.upload_folder(
+                folder_path=str(lora_dir),
+                path_in_repo="lora-adapter",
+                repo_id=repo_id,
+                repo_type="model",
+            )
     print(f"[PASS] Uploaded {repo_id}")
 
 
@@ -92,7 +99,7 @@ def main() -> int:
                 (args.release_dir / "solsec_cli.py", "solsec_cli.py"),
                 (args.release_dir / "HF_MODEL_CARD_APPSEC.md", "README.md"),
             ],
-            args.outputs_dir / "appsec-lora",
+            args.outputs_dir / "lora-appsec",
         ),
         (
             f"{username}/AlphaQuant-Qwen3.8-27B-GGUF",
@@ -103,7 +110,7 @@ def main() -> int:
                 (args.release_dir / "solsec_cli.py", "solsec_cli.py"),
                 (args.release_dir / "HF_MODEL_CARD_ALPHAQUANT.md", "README.md"),
             ],
-            args.outputs_dir / "alphaquant-lora",
+            args.outputs_dir / "lora-alphaquant",
         ),
     ]
 
@@ -127,7 +134,7 @@ def main() -> int:
             (args.release_dir / "Modelfile.psyche_fa", "Modelfile.psyche_fa"),
             (args.release_dir / "HF_MODEL_CARD_PSYCHE_FA.md", "README.md"),
         ],
-        lora_dir=args.outputs_dir / "psyche-fa-lora",
+        lora_dir=args.outputs_dir / "lora-psyche-fa",
     )
 
     if psyche_q8.exists():
