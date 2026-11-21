@@ -13,6 +13,8 @@ Production fine-tuning pipeline, whole-repo CLI scanner (`release-kit/solsec_cli
 | **AlphaQuant-Qwen3.8-27B** | Quant & Algo Trading (`Freqtrade`, `PineScript`, `vectorbt`, Risk Engines) | `1,200` train / `150` eval | **$49 USDC** |
 | **Full Pro Bundle** | All Pro GGUFs + LoRA adapters + `release-kit/solsec_cli.py` | Full Suite | **$119 USDC** |
 
+**Instant Automated Checkout (24/7 Serverless Solana USDC Bot):** [https://t.me/backerv_bot](https://t.me/backerv_bot)
+
 ## Whole-Repo CLI Scanner Quickstart
 ```bash
 # Scan an entire Solana/Solidity project locally via Ollama or llama-server

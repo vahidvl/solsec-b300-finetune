@@ -56,6 +56,5 @@ ollama run reverseeng-27b
 | Severity Classification Accuracy | `0.0%` | **`100.0%`** |
 | False-Positive Rejection Rate | `88.9%` | **`100.0%`** |
 
-### How to Purchase Pro Access (Instant Crypto / Zero-KYC)
-Send **USDC (Solana)** or **SOL** equivalent and open a Discussion / DM with your transaction signature + Hugging Face username for instant private repo access:
-- **Solana USDC / SOL Wallet:** `9JQ8...` *(see [GitHub Storefront](https://github.com/vahidvl/solsec-b300-finetune) for full checkout link & CLI)*
+### Instant Automated Purchase (24/7 Serverless Telegram Bot — Zero-KYC Solana USDC)
+Order and receive instant download links automatically via **[@backerv_bot](https://t.me/backerv_bot)** (`https://t.me/backerv_bot`) using **Solana USDC** — zero KYC, zero platform fees.

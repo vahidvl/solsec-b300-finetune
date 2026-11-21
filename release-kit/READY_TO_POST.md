@@ -49,7 +49,7 @@ Held-out benchmark (25 cases vs base Qwen3.8-27B):
 Free ReverseEng-27B GGUF + CLI repo:
 - GitHub: https://github.com/vahidvl/solsec-b300-finetune
 - Free ReverseEng GGUF: https://huggingface.co/backerv/ReverseEng-Qwen3.8-27B-GGUF
-- Pro Suite (SolSec + AppSec + AlphaQuant GGUFs + LoRA adapters): <YOUR_CHECKOUT_OR_WALLET>
+- Pro Suite (SolSec + AppSec + AlphaQuant GGUFs + LoRA adapters): https://t.me/backerv_bot
 ```
 
 ---
@@ -65,5 +65,5 @@ Just trained 5 specialized 27B local models (262K ctx) on 8x NVIDIA B300s:
 4. AlphaQuant-Qwen3.8-27B: Freqtrade/PineScript/Quant
 
 CLI scanner + full details: https://github.com/vahidvl/solsec-b300-finetune
-Pro Bundle (USDC): <YOUR_CHECKOUT_OR_WALLET>
+Pro Bundle (Instant Solana USDC Checkout): https://t.me/backerv_bot
 ```
