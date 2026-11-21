@@ -48,8 +48,8 @@ def upload_model_repo(
             repo_type="model",
         )
     if lora_dir and lora_dir.exists() and lora_dir.is_dir():
-        if any(f.startswith("lora-adapter/") for f in existing):
-            print(f"[SKIP] lora-adapter/ already in {repo_id}")
+        if "lora-adapter/adapter_model.safetensors" in existing:
+            print(f"[SKIP] lora-adapter/adapter_model.safetensors already in {repo_id}")
         else:
             print(f"Uploading LoRA adapter {lora_dir} -> {repo_id}/lora-adapter ...")
             api.upload_folder(
@@ -57,6 +57,7 @@ def upload_model_repo(
                 path_in_repo="lora-adapter",
                 repo_id=repo_id,
                 repo_type="model",
+                ignore_patterns=["checkpoint-*", "**/checkpoint-*"],
             )
     print(f"[PASS] Uploaded {repo_id}")
 
