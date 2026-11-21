@@ -9,11 +9,11 @@
 
 | Parameter | Locked Value |
 | :--- | :--- |
-| **Base Model** | `Qwen/Qwen2.5-Coder-14B-Instruct` |
+| **Base Model** | `Qwen/Qwen3.8-27B` |
 | **Fine-Tuning Method** | Multi-GPU BF16 LoRA (`r=64`, `lora_alpha=128`, `lora_dropout=0.05`) via TRL `SFTTrainer` + Accelerate |
 | **Compute Target** | `8× NVIDIA B300` (288 GB VRAM/GPU, 2.3 TB total VRAM) |
 | **Merged Weights** | `safetensors` (BF16, sharded) |
-| **Target GGUF Quantizations** | `Q4_K_M` (primary local/Ollama distribution) & `Q8_0` (high-precision audit tier) |
+| **Target GGUF Quantizations** | `solsec-qwen3.8-27b-Q4_K_M.gguf` (primary local/Ollama) & `solsec-qwen3.8-27b-Q8_0.gguf` (high-precision) |
 | **Supported Runtimes** | Ollama, LM Studio, llama.cpp, vLLM |
 
 ---

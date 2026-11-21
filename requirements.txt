@@ -1,14 +1,14 @@
 # Core Fine-Tuning & Export Dependencies (8x NVIDIA B300)
-torch>=2.5.0
-transformers>=4.46.0
-accelerate>=1.1.0
-peft>=0.13.0
-trl>=0.12.0
-datasets>=3.1.0
-bitsandbytes>=0.44.0
+# NOTE: torch is intentionally omitted so pip never overwrites B300 Blackwell CUDA PyTorch.
+transformers>=4.53.0
+accelerate>=1.4.0
+peft>=0.15.0
+trl>=0.15.0
+datasets>=3.2.0
 safetensors>=0.4.5
 sentencepiece>=0.2.0
 protobuf>=4.25.0
-huggingface_hub>=0.26.0
-scipy>=1.14.0
+huggingface_hub>=0.28.0
+gguf>=0.14.0
+pillow>=10.0.0
 tqdm>=4.66.0

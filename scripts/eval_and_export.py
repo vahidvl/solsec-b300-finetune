@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""[B300-004] Evaluate Base vs Fine-Tuned Model, Merge LoRA, and Export GGUF (Q4_K_M, Q8_0)."""
+"""[B300-004 / B300-HARDEN-001] Export GGUF First, Then Evaluate Base vs Fine-Tuned."""
 
 from __future__ import annotations
 
@@ -12,16 +12,53 @@ from typing import Any
 
 import torch
 from peft import PeftModel
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import (
+    AutoConfig,
+    AutoModelForCausalLM,
+    AutoModelForImageTextToText,
+    AutoTokenizer,
+)
 
 JSON_BLOCK_RE = re.compile(r"```json\s*(\{.*?\})\s*```", re.DOTALL)
 
 
+def load_model_dynamic(model_id: str):
+    cfg = AutoConfig.from_pretrained(model_id, trust_remote_code=True)
+    archs = cfg.architectures or []
+    model_type = getattr(cfg, "model_type", "") or ""
+    is_vlm = any("ConditionalGeneration" in a for a in archs) or model_type.startswith(
+        ("qwen3_5", "qwen3_vl", "qwen2_vl")
+    )
+    loader = AutoModelForImageTextToText if is_vlm else AutoModelForCausalLM
+    return loader.from_pretrained(
+        model_id,
+        torch_dtype=torch.bfloat16,
+        device_map="auto",
+        trust_remote_code=True,
+    )
+
+
+def format_prompt(tokenizer: AutoTokenizer, prompt_msgs: list[dict[str, str]]) -> str:
+    try:
+        return tokenizer.apply_chat_template(
+            prompt_msgs,
+            tokenize=False,
+            add_generation_prompt=True,
+            enable_thinking=False,
+        )
+    except TypeError:
+        return tokenizer.apply_chat_template(
+            prompt_msgs,
+            tokenize=False,
+            add_generation_prompt=True,
+        )
+
+
 def evaluate_model(
-    model: AutoModelForCausalLM,
+    model: Any,
     tokenizer: AutoTokenizer,
     eval_records: list[dict[str, Any]],
-    max_new_tokens: int = 768,
+    max_new_tokens: int = 512,
 ) -> dict[str, Any]:
     model.eval()
     json_valid = 0
@@ -35,7 +72,7 @@ def evaluate_model(
         expected_match = JSON_BLOCK_RE.search(messages[2]["content"])
         expected_json = json.loads(expected_match.group(1)) if expected_match else {}
 
-        text = tokenizer.apply_chat_template(prompt_msgs, tokenize=False, add_generation_prompt=True)
+        text = format_prompt(tokenizer, prompt_msgs)
         inputs = tokenizer(text, return_tensors="pt").to(model.device)
         with torch.no_grad():
             out_ids = model.generate(**inputs, max_new_tokens=max_new_tokens, do_sample=False)
@@ -65,55 +102,65 @@ def evaluate_model(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Evaluate, merge LoRA, and export GGUF.")
-    parser.add_argument("--base-model", type=str, default="Qwen/Qwen2.5-Coder-14B-Instruct")
+    parser = argparse.ArgumentParser(description="Merge LoRA, export GGUF, then evaluate.")
+    parser.add_argument("--base-model", type=str, default="Qwen/Qwen3.8-27B")
     parser.add_argument("--lora-dir", type=Path, default=Path("outputs/b300-lora"))
     parser.add_argument("--eval-file", type=Path, default=Path("data/eval_benchmark.jsonl"))
     parser.add_argument("--merged-dir", type=Path, default=Path("outputs/merged-safetensors"))
     parser.add_argument("--gguf-dir", type=Path, default=Path("outputs/gguf"))
-    parser.add_argument("--llama-cpp-dir", type=Path, default=Path("/opt/llama.cpp"))
+    parser.add_argument("--llama-cpp-dir", type=Path, default=Path.home() / "llama.cpp")
+    parser.add_argument("--eval-limit", type=int, default=25)
     parser.add_argument("--skip-base-eval", action="store_true")
     args = parser.parse_args()
 
-    eval_records = [json.loads(line) for line in args.eval_file.read_text(encoding="utf-8").splitlines() if line.strip()]
     tokenizer = AutoTokenizer.from_pretrained(args.base_model, trust_remote_code=True)
+    base_model = load_model_dynamic(args.base_model)
 
-    report: dict[str, Any] = {}
-    base_model = AutoModelForCausalLM.from_pretrained(
-        args.base_model,
-        torch_dtype=torch.bfloat16,
-        device_map="auto",
-        trust_remote_code=True,
-    )
-    if not args.skip_base_eval:
-        report["base"] = evaluate_model(base_model, tokenizer, eval_records)
-
+    # 1. EXPORT FIRST: Merge LoRA -> safetensors -> GGUF (Q4_K_M, Q8_0)
     peft_model = PeftModel.from_pretrained(base_model, str(args.lora_dir))
     merged_model = peft_model.merge_and_unload()
-    report["finetuned"] = evaluate_model(merged_model, tokenizer, eval_records)
 
     args.merged_dir.mkdir(parents=True, exist_ok=True)
     merged_model.save_pretrained(str(args.merged_dir), safe_serialization=True)
     tokenizer.save_pretrained(str(args.merged_dir))
-
-    report_path = args.merged_dir / "eval_report.json"
-    report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
-    print(f"Saved eval report -> {report_path}")
-    print(json.dumps(report, indent=2))
+    print(f"Saved merged safetensors -> {args.merged_dir}")
 
     args.gguf_dir.mkdir(parents=True, exist_ok=True)
-    f16_gguf = args.gguf_dir / "auditor-14b-f16.gguf"
+    bf16_gguf = args.gguf_dir / "solsec-qwen3.8-27b-bf16.gguf"
     convert_script = args.llama_cpp_dir / "convert_hf_to_gguf.py"
     quantize_bin = args.llama_cpp_dir / "build" / "bin" / "llama-quantize"
 
     subprocess.run(
-        ["python3", str(convert_script), str(args.merged_dir), "--outfile", str(f16_gguf), "--outtype", "bf16"],
+        ["python3", str(convert_script), str(args.merged_dir), "--outfile", str(bf16_gguf), "--outtype", "bf16"],
         check=True,
     )
     for quant in ("Q4_K_M", "Q8_0"):
-        out_gguf = args.gguf_dir / f"auditor-14b-{quant}.gguf"
-        subprocess.run([str(quantize_bin), str(f16_gguf), str(out_gguf), quant], check=True)
+        out_gguf = args.gguf_dir / f"solsec-qwen3.8-27b-{quant}.gguf"
+        subprocess.run([str(quantize_bin), str(bf16_gguf), str(out_gguf), quant], check=True)
         print(f"Exported GGUF -> {out_gguf}")
+
+    if bf16_gguf.exists():
+        bf16_gguf.unlink()
+        print(f"Deleted intermediate {bf16_gguf.name} to free ~54GB disk.")
+
+    # 2. EVAL SECOND: Fast eval on held-out subset
+    eval_records = [
+        json.loads(line)
+        for line in args.eval_file.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ][: args.eval_limit]
+
+    report: dict[str, Any] = {"finetuned": evaluate_model(merged_model, tokenizer, eval_records)}
+    if not args.skip_base_eval:
+        del merged_model, peft_model
+        torch.cuda.empty_cache()
+        fresh_base = load_model_dynamic(args.base_model)
+        report["base"] = evaluate_model(fresh_base, tokenizer, eval_records)
+
+    report_path = args.gguf_dir / "eval_report.json"
+    report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    print(f"Saved eval report -> {report_path}")
+    print(json.dumps(report, indent=2))
 
 
 if __name__ == "__main__":

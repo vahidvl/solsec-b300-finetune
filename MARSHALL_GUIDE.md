@@ -33,11 +33,11 @@ bash scripts/run_on_b300.sh
 ```
 
 `run_on_b300.sh` automatically:
-1. Installs `requirements.txt`.
+1. Installs `requirements.txt` (preserving B300 CUDA PyTorch) and ensures `transformers` supports `Qwen/Qwen3.8-27B`.
 2. Re-validates `data/train.jsonl` and `data/eval_benchmark.jsonl`.
-3. Clones & builds `llama.cpp` (`llama-quantize`) if not present.
-4. Launches `accelerate launch --num_processes=8 --mixed_precision=bf16 scripts/train_b300.py`.
-5. Runs `scripts/eval_and_export.py` (evaluates base vs fine-tuned, merges LoRA to `safetensors`, exports `Q4_K_M` & `Q8_0` GGUFs).
+3. Clones & builds `ggml-org/llama.cpp` (`llama-quantize`, `-DGGML_CUDA=OFF`) if not present.
+4. Launches `accelerate launch --num_processes=$NUM_GPUS --mixed_precision=bf16 scripts/train_b300.py`.
+5. Runs `scripts/eval_and_export.py --eval-limit 25` (merges LoRA to `safetensors`, exports `solsec-qwen3.8-27b-Q4_K_M.gguf` & `solsec-qwen3.8-27b-Q8_0.gguf`, deletes intermediate `bf16.gguf`, and saves `outputs/gguf/eval_report.json`).
 
 ---
 
